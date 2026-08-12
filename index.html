@@ -3,8 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
-  <title>Camera Siêu Zoom 1x-200x | 360Hz ➔ 8K Ultra HD</title>
+  <title>Camera Siêu Zoom PRO MAX | 1x-200x | 8K Ultra HD | Chụp Ảnh & Quay Video</title>
   <style>
+    :root {
+      --gold: #FFD700;
+      --gold-dark: #B8960C;
+      --accent: #FF6B35;
+      --bg-dark: rgba(0,0,0,0.85);
+      --glass: rgba(255,255,255,0.1);
+      --glass-border: rgba(255,255,255,0.2);
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -17,7 +26,7 @@
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
-      font-family: 'SF Pro Display', system-ui, -apple-system, sans-serif;
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
@@ -26,26 +35,100 @@
       left: 0;
     }
 
-    #container {
+    #app {
       width: 100%;
       height: 100%;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      flex-direction: column;
       position: relative;
-      background: #000;
     }
 
-    /* Video element ẩn - dùng để capture */
-    #videoElement {
-      display: none;
+    /* Header siêu sang */
+    #header {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      right: 0;
+      z-index: 100;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 80%, transparent 100%);
+      pointer-events: none;
+    }
+
+    #header > * {
+      pointer-events: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-dark);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 8px 16px;
+      border-radius: 30px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .brand-icon {
+      font-size: 24px;
+      filter: drop-shadow(0 0 10px rgba(255,215,0,0.8));
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .brand-text {
+      color: var(--gold);
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 1px;
+      text-shadow: 0 0 20px rgba(255,215,0,0.6);
+    }
+
+    .pro-badge {
+      background: linear-gradient(135deg, #FF6B35, #FF3366);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      animation: glow 2s infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 10px rgba(255,107,53,0.6); }
+      50% { box-shadow: 0 0 25px rgba(255,107,53,1); }
+    }
+
+    /* Container chính */
+    #mainContainer {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Khu vực camera */
+    #cameraArea {
+      flex: 1;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #videoElement {
+      display: none;
     }
 
     #outputCanvas {
@@ -53,205 +136,516 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      image-rendering: auto;
-      image-rendering: crisp-edges;
       background: #000;
+      image-rendering: auto;
     }
 
-    /* Overlay thông tin */
-    #infoPanel {
+    /* Gallery bên cạnh */
+    #galleryPanel {
       position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 30px;
-      font-size: 14px;
-      font-weight: 500;
-      text-align: center;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      z-index: 20;
-      pointer-events: none;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 80px;
+      max-height: 70vh;
+      background: var(--bg-dark);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border-radius: 20px 0 0 20px;
+      border: 1px solid var(--glass-border);
+      border-right: none;
+      padding: 12px 8px;
       display: flex;
-      gap: 15px;
-      align-items: center;
-    }
-
-    #zoomInfo {
-      position: absolute;
-      bottom: 35px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      color: white;
-      padding: 14px 30px;
-      border-radius: 50px;
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      text-align: center;
-      border: 1px solid rgba(255, 215, 0, 0.4);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-      z-index: 20;
-      pointer-events: none;
-      display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 8px;
+      z-index: 50;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
 
-    #zoomValue {
-      font-size: 42px;
-      font-weight: 800;
-      color: #FFD966;
-      text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-      min-width: 80px;
-      display: inline-block;
-      text-align: center;
+    #galleryPanel::-webkit-scrollbar {
+      display: none;
     }
 
-    .quality-badge {
-      background: rgba(255,255,255,0.15);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #4FC3F7;
+    #galleryPanel.collapsed {
+      transform: translateY(-50%) translateX(60px);
     }
 
-    .fps-badge {
-      background: rgba(76, 175, 80, 0.3);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #81C784;
-    }
-
-    /* Nút chuyển camera */
-    .switch-btn {
+    .gallery-toggle {
       position: absolute;
-      top: 25px;
-      right: 20px;
-      width: 48px;
-      height: 48px;
-      background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
+      left: -30px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 60px;
+      background: var(--bg-dark);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 15px 0 0 15px;
+      border: 1px solid var(--glass-border);
+      border-right: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 51;
+    }
+
+    .gallery-item {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .gallery-item:hover, .gallery-item:active {
+      border-color: var(--gold);
+      box-shadow: 0 0 20px rgba(255,215,0,0.5);
+      transform: scale(1.05);
+    }
+
+    .gallery-item img, .gallery-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-item .video-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(255,0,0,0.8);
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+
+    .gallery-item .delete-btn {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: rgba(255,0,0,0.8);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      border: 1px solid rgba(255,255,255,0.3);
+      font-size: 12px;
       cursor: pointer;
-      z-index: 30;
-      transition: all 0.2s;
-      pointer-events: auto;
-      touch-action: manipulation;
-    }
-    .switch-btn:active {
-      background: rgba(255,255,255,0.4);
-      transform: scale(0.95);
+      opacity: 0;
+      transition: opacity 0.2s;
     }
 
-    /* Nút chọn chế độ chất lượng */
-    .mode-selector {
+    .gallery-item:hover .delete-btn {
+      opacity: 1;
+    }
+
+    /* Nút chức năng chính */
+    #controlsBar {
       position: absolute;
-      bottom: 110px;
+      bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 8px;
-      z-index: 25;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      padding: 6px;
+      gap: 15px;
+      z-index: 60;
+      align-items: center;
+    }
+
+    .ctrl-btn {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      border: 2px solid var(--glass-border);
+      background: var(--bg-dark);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: white;
+      font-size: 22px;
+      touch-action: manipulation;
+    }
+
+    .ctrl-btn:active {
+      transform: scale(0.9);
+      background: rgba(255,255,255,0.3);
+    }
+
+    .ctrl-btn.record {
+      width: 70px;
+      height: 70px;
+      border-color: #FF4444;
+      background: rgba(255,0,0,0.2);
+      animation: recordPulse 2s infinite;
+    }
+
+    @keyframes recordPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,0,0,0.5); }
+      50% { box-shadow: 0 0 0 20px rgba(255,0,0,0); }
+    }
+
+    .ctrl-btn.record.active {
+      background: #FF0000;
+      border-color: #FF0000;
+      animation: none;
+      box-shadow: 0 0 30px rgba(255,0,0,0.8);
+    }
+
+    .ctrl-btn.capture {
+      width: 65px;
+      height: 65px;
+      border-color: white;
+      background: rgba(255,255,255,0.2);
+    }
+
+    .ctrl-btn.capture:active {
+      background: white;
+      color: black;
+    }
+
+    .ctrl-btn.sharpen {
+      border-color: #00E5FF;
+      background: rgba(0,229,255,0.15);
+      box-shadow: 0 0 15px rgba(0,229,255,0.3);
+      position: relative;
+    }
+
+    .ctrl-btn.sharpen.active {
+      background: #00E5FF;
+      color: #000;
+      border-color: #00E5FF;
+      box-shadow: 0 0 30px rgba(0,229,255,0.8);
+      animation: sharpenGlow 0.5s infinite alternate;
+    }
+
+    @keyframes sharpenGlow {
+      0% { box-shadow: 0 0 20px rgba(0,229,255,0.6); }
+      100% { box-shadow: 0 0 50px rgba(0,229,255,1), 0 0 100px rgba(0,229,255,0.5); }
+    }
+
+    .sharpen-label {
+      position: absolute;
+      bottom: -25px;
+      font-size: 10px;
+      color: #00E5FF;
+      font-weight: 700;
+      white-space: nowrap;
+      text-shadow: 0 0 10px rgba(0,229,255,0.8);
+    }
+
+    /* Zoom indicator */
+    #zoomOverlay {
+      position: absolute;
+      bottom: 130px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-dark);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 12px 28px;
+      border-radius: 40px;
+      border: 1px solid rgba(255,215,0,0.4);
+      z-index: 55;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #zoomValue {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--gold);
+      text-shadow: 0 0 20px rgba(255,215,0,0.8);
+      min-width: 70px;
+      text-align: center;
+    }
+
+    .zoom-label {
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Chế độ chất lượng */
+    #modeSelector {
+      position: absolute;
+      bottom: 180px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 55;
+      background: var(--bg-dark);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 5px;
       border-radius: 30px;
-      border: 1px solid rgba(255,255,255,0.2);
+      border: 1px solid var(--glass-border);
     }
 
     .mode-btn {
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 25px;
       border: none;
       background: transparent;
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.7);
       font-weight: 600;
-      font-size: 13px;
+      font-size: 11px;
       cursor: pointer;
-      transition: all 0.25s;
+      transition: all 0.3s;
       white-space: nowrap;
       touch-action: manipulation;
     }
 
     .mode-btn.active {
-      background: #FFD966;
+      background: var(--gold);
       color: #000;
-      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+      box-shadow: 0 4px 15px rgba(255,215,0,0.5);
     }
 
-    .mode-btn:active {
+    /* Flash hiệu ứng chụp ảnh */
+    #flashEffect {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    #flashEffect.flash {
+      opacity: 1;
+      transition: opacity 0s;
+    }
+
+    /* Toast thông báo */
+    #toast {
+      position: fixed;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--bg-dark);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 30px;
+      z-index: 300;
+      font-weight: 600;
+      border: 1px solid var(--glass-border);
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Nút lưu vào album */
+    .save-album-btn {
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 5px;
+      width: 100%;
+      transition: all 0.3s;
+    }
+
+    .save-album-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Preview modal */
+    #previewModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 250;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #previewModal.active {
+      display: flex;
+    }
+
+    #previewContent {
+      max-width: 95%;
+      max-height: 70vh;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .preview-btn {
+      padding: 12px 24px;
+      border-radius: 25px;
+      border: none;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .preview-btn.save {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .preview-btn.close {
+      background: rgba(255,255,255,0.2);
+      color: white;
+    }
+
+    .preview-btn:active {
       transform: scale(0.95);
     }
 
     @media (max-width: 600px) {
-      #zoomInfo {
-        bottom: 30px;
-        padding: 12px 24px;
+      #galleryPanel {
+        width: 65px;
+        padding: 8px 4px;
+      }
+      .gallery-item {
+        width: 50px;
+        height: 50px;
+      }
+      .ctrl-btn {
+        width: 45px;
+        height: 45px;
         font-size: 18px;
       }
+      .ctrl-btn.record {
+        width: 60px;
+        height: 60px;
+      }
+      .ctrl-btn.capture {
+        width: 55px;
+        height: 55px;
+      }
       #zoomValue {
-        font-size: 36px;
-      }
-      .mode-selector {
-        bottom: 100px;
-        gap: 4px;
-      }
-      .mode-btn {
-        padding: 6px 12px;
-        font-size: 11px;
+        font-size: 28px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Video element ẩn để capture frame -->
-  <video id="videoElement" playsinline muted autoplay></video>
-  
-  <div id="container">
-    <canvas id="outputCanvas"></canvas>
-  </div>
+  <div id="app">
+    <!-- Header -->
+    <div id="header">
+      <div class="brand">
+        <span class="brand-icon">📸</span>
+        <span class="brand-text">ZOOM PRO</span>
+        <span class="pro-badge">MAX</span>
+      </div>
+    </div>
 
-  <div id="infoPanel">
-    <span class="fps-badge" id="fpsDisplay">⚡ 30 FPS</span>
-    <span class="quality-badge" id="qualityDisplay">🎯 1080p</span>
-  </div>
+    <!-- Main Container -->
+    <div id="mainContainer">
+      <div id="cameraArea">
+        <video id="videoElement" playsinline muted autoplay></video>
+        <canvas id="outputCanvas"></canvas>
+      </div>
 
-  <div id="zoomInfo">
-    <span>🔍</span>
-    <span id="zoomValue">1.0</span>
-    <span>x</span>
-  </div>
+      <!-- Gallery Panel -->
+      <div id="galleryPanel">
+        <div class="gallery-toggle" id="galleryToggle">◀</div>
+        <div id="galleryItems"></div>
+      </div>
+    </div>
 
-  <div class="mode-selector" id="modeSelector">
-    <button class="mode-btn" data-mode="smooth">🚀 360Hz Mượt</button>
-    <button class="mode-btn active" data-mode="balanced">⚖️ Cân bằng</button>
-    <button class="mode-btn" data-mode="ultrahd">💎 8K Siêu Nét</button>
-  </div>
+    <!-- Zoom Overlay -->
+    <div id="zoomOverlay">
+      <span class="zoom-label">🔍</span>
+      <span id="zoomValue">1.0</span>
+      <span class="zoom-label">x</span>
+    </div>
 
-  <button class="switch-btn" id="switchCameraBtn" style="display: none;">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-      <path d="M20 4h-3.5l-1.5-2h-6L7.5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 14c-3.31 0-6-2.69-6-6h2c0 2.21 1.79 4 4 4s4-1.79 4-4h2c0 3.31-2.69 6-6 6z"/>
-      <path d="M12 10l-2 2h4z"/>
-    </svg>
-  </button>
+    <!-- Mode Selector -->
+    <div id="modeSelector">
+      <button class="mode-btn" data-mode="smooth">🚀 360Hz</button>
+      <button class="mode-btn active" data-mode="balanced">⚖️ Cân bằng</button>
+      <button class="mode-btn" data-mode="ultrahd">💎 8K Nét</button>
+    </div>
+
+    <!-- Controls -->
+    <div id="controlsBar">
+      <button class="ctrl-btn sharpen" id="sharpenBtn" title="Làm Nét Thần Kỳ">
+        ✨
+        <span class="sharpen-label">NÉT CĂNG</span>
+      </button>
+      <button class="ctrl-btn capture" id="captureBtn" title="Chụp ảnh">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="12" cy="13" r="3" fill="currentColor"/>
+          <rect x="2" y="4" width="20" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </button>
+      <button class="ctrl-btn record" id="recordBtn" title="Quay video">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+          <circle cx="12" cy="12" r="5" fill="#FF0000"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Flash Effect -->
+    <div id="flashEffect"></div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal">
+      <img id="previewContent" />
+      <video id="previewVideo" controls style="display:none; max-width:95%; max-height:70vh; border-radius:12px;"></video>
+      <div class="preview-actions">
+        <button class="preview-btn save" id="saveToAlbumBtn">💾 Lưu vào Album</button>
+        <button class="preview-btn close" id="closePreviewBtn">✕ Đóng</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     (async function() {
@@ -259,275 +653,184 @@
       const MIN_ZOOM = 1.0;
       const MAX_ZOOM = 200.0;
       
-      // Các chế độ chất lượng
       const QUALITY_MODES = {
-        smooth: {
-          name: '360Hz Mượt',
-          resolution: 720,        // 720p để fps cao
-          fps: 60,               // Ưu tiên fps cao
-          smoothing: 'low',      // Ít làm mượt để giảm lag
-          sharpness: 'normal'
-        },
-        balanced: {
-          name: 'Cân bằng',
-          resolution: 1080,      // Full HD
-          fps: 30,
-          smoothing: 'medium',
-          sharpness: 'high'
-        },
-        ultrahd: {
-          name: '8K Siêu Nét',
-          resolution: 3840,      // 4K/8K nếu hỗ trợ
-          fps: 24,
-          smoothing: 'high',     // Nội suy chất lượng cao
-          sharpness: 'ultra'
-        }
+        smooth: { name: '360Hz Mượt', resolution: 720, sharpness: 'low' },
+        balanced: { name: 'Cân bằng', resolution: 1080, sharpness: 'high' },
+        ultrahd: { name: '8K Siêu Nét', resolution: 3840, sharpness: 'ultra' }
       };
       
       let currentMode = 'balanced';
-      let targetFPS = 30;
+      let sharpenEnabled = false;
       
       // ============ DOM ELEMENTS ============
       const videoElement = document.getElementById('videoElement');
       const canvas = document.getElementById('outputCanvas');
-      const ctx = canvas.getContext('2d', {
-        alpha: false,
-        desynchronized: true,
-        willReadFrequently: false
-      });
+      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
       
       const zoomValueSpan = document.getElementById('zoomValue');
-      const fpsDisplay = document.getElementById('fpsDisplay');
-      const qualityDisplay = document.getElementById('qualityDisplay');
-      const switchBtn = document.getElementById('switchCameraBtn');
-      const modeSelector = document.getElementById('modeSelector');
-      const container = document.getElementById('container');
+      const galleryItems = document.getElementById('galleryItems');
+      const galleryPanel = document.getElementById('galleryPanel');
+      const galleryToggle = document.getElementById('galleryToggle');
+      const flashEffect = document.getElementById('flashEffect');
+      const toast = document.getElementById('toast');
+      const previewModal = document.getElementById('previewModal');
+      const previewContent = document.getElementById('previewContent');
+      const previewVideo = document.getElementById('previewVideo');
       
       // ============ STATE ============
       let videoStream = null;
       let videoTrack = null;
-      let videoWidth = 1920;
-      let videoHeight = 1080;
-      
+      let videoWidth = 1920, videoHeight = 1080;
       let currentZoom = 1.0;
-      let panX = 0.5;
-      let panY = 0.5;
+      let panX = 0.5, panY = 0.5;
       
       // Touch state
-      let isTouching = false;
-      let startTouchDistance = 0;
-      let startZoom = 1.0;
-      let isPanning = false;
-      let lastPanX = 0, lastPanY = 0;
-      let startPanX = 0, startPanY = 0;
+      let isTouching = false, startTouchDistance = 0, startZoom = 1.0;
+      let isPanning = false, lastPanX = 0, lastPanY = 0, startPanX = 0, startPanY = 0;
       
-      // FPS counter
-      let frameCount = 0;
-      let lastFPSTime = performance.now();
-      let currentFPS = 30;
+      // Recording state
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let isRecording = false;
+      
+      // Gallery data
+      let galleryData = [];
       
       // ============ KHỞI TẠO CAMERA ============
       async function startCamera(facingMode = "environment") {
         try {
-          // Dừng stream cũ
           if (videoStream) {
             videoStream.getTracks().forEach(track => track.stop());
           }
           
-          // Cấu hình độ phân giải dựa trên chế độ
           const modeConfig = QUALITY_MODES[currentMode];
-          const targetHeight = modeConfig.resolution;
-          
           const constraints = {
             video: {
               facingMode: facingMode,
-              width: { ideal: targetHeight * 16/9 },
-              height: { ideal: targetHeight },
+              width: { ideal: modeConfig.resolution * 16/9 },
+              height: { ideal: modeConfig.resolution },
               aspectRatio: { ideal: 16/9 }
             },
-            audio: false
+            audio: true
           };
-          
-          console.log('🎥 Yêu cầu camera với cấu hình:', constraints);
           
           videoStream = await navigator.mediaDevices.getUserMedia(constraints);
           videoTrack = videoStream.getVideoTracks()[0];
-          
-          // Gán stream cho video element
           videoElement.srcObject = videoStream;
           
-          // Đợi video sẵn sàng
-          await new Promise((resolve, reject) => {
+          await new Promise((resolve) => {
             videoElement.onloadedmetadata = () => {
               videoWidth = videoElement.videoWidth;
               videoHeight = videoElement.videoHeight;
-              console.log(`✅ Video sẵn sàng: ${videoWidth}x${videoHeight}`);
               resolve();
             };
-            videoElement.onerror = (e) => {
-              console.error('❌ Lỗi video:', e);
-              reject(e);
-            };
-            // Timeout 10 giây
-            setTimeout(() => reject(new Error('Timeout khi load video')), 10000);
           });
           
-          // Bắt đầu play
           await videoElement.play();
-          console.log('▶️ Video đang phát');
-          
-          // Cập nhật quality display
-          updateQualityDisplay();
-          
-          // Resize canvas
           resizeCanvas();
-          
-          // Kiểm tra số lượng camera
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const videoDevices = devices.filter(d => d.kind === 'videoinput');
-          switchBtn.style.display = videoDevices.length > 1 ? 'flex' : 'none';
-          
-          // Bắt đầu render loop
           requestAnimationFrame(renderLoop);
           
         } catch (err) {
-          console.error('❌ Lỗi camera:', err);
-          alert('⚠️ Không thể truy cập camera. Vui lòng:\n1. Cấp quyền camera cho trang web\n2. Đảm bảo không có ứng dụng khác đang dùng camera\n3. Thử reload lại trang\n\nLỗi: ' + err.message);
+          console.error('Lỗi camera:', err);
+          showToast('⚠️ Vui lòng cấp quyền camera!');
         }
       }
       
-      function updateQualityDisplay() {
-        const mode = QUALITY_MODES[currentMode];
-        let resolutionText = '';
-        if (videoWidth >= 3840) resolutionText = '8K';
-        else if (videoWidth >= 1920) resolutionText = '1080p';
-        else if (videoWidth >= 1280) resolutionText = '720p';
-        else resolutionText = videoHeight + 'p';
-        
-        qualityDisplay.textContent = `🎯 ${resolutionText} ${mode.name}`;
-        fpsDisplay.textContent = `⚡ ${currentFPS} FPS`;
-      }
-      
-      // ============ RESIZE CANVAS ============
       function resizeCanvas() {
-        const rect = container.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        const area = document.getElementById('cameraArea');
+        canvas.width = area.clientWidth;
+        canvas.height = area.clientHeight;
       }
       
-      window.addEventListener('resize', resizeCanvas);
-      window.addEventListener('orientationchange', () => {
-        setTimeout(resizeCanvas, 300);
-      });
-      
-      // ============ RENDER LOOP SIÊU NÉT ============
-      function renderLoop(timestamp) {
+      // ============ RENDER LOOP ============
+      function renderLoop() {
         if (!videoStream || videoElement.readyState < 2) {
           requestAnimationFrame(renderLoop);
           return;
         }
         
-        // FPS counter
-        frameCount++;
-        if (timestamp - lastFPSTime >= 1000) {
-          currentFPS = Math.round(frameCount / ((timestamp - lastFPSTime) / 1000));
-          frameCount = 0;
-          lastFPSTime = timestamp;
-          fpsDisplay.textContent = `⚡ ${currentFPS} FPS`;
-        }
-        
         const canvasW = canvas.width;
         const canvasH = canvas.height;
-        
         if (canvasW === 0 || canvasH === 0) {
           requestAnimationFrame(renderLoop);
           return;
         }
         
-        // Clear canvas
         ctx.clearRect(0, 0, canvasW, canvasH);
         
-        // Tính toán vùng crop
         const cropWidth = videoWidth / currentZoom;
         const cropHeight = videoHeight / currentZoom;
-        
         const maxPanX = videoWidth - cropWidth;
         const maxPanY = videoHeight - cropHeight;
         
-        let cropX = panX * maxPanX;
-        let cropY = panY * maxPanY;
+        let cropX = Math.max(0, Math.min(panX * maxPanX, maxPanX));
+        let cropY = Math.max(0, Math.min(panY * maxPanY, maxPanY));
         
-        cropX = Math.max(0, Math.min(cropX, maxPanX));
-        cropY = Math.max(0, Math.min(cropY, maxPanY));
-        
-        // Cấu hình chất lượng render theo chế độ
-        const mode = QUALITY_MODES[currentMode];
+        // Cấu hình chất lượng
         ctx.imageSmoothingEnabled = true;
+        const mode = QUALITY_MODES[currentMode];
         
-        switch(mode.sharpness) {
-          case 'ultra':
-            ctx.imageSmoothingQuality = 'high';
-            // Thêm sharpness bằng cách vẽ nhiều lần (fake)
-            break;
-          case 'high':
-            ctx.imageSmoothingQuality = 'high';
-            break;
-          case 'normal':
-            ctx.imageSmoothingQuality = 'medium';
-            break;
-          case 'low':
-            ctx.imageSmoothingQuality = 'low';
-            break;
+        if (sharpenEnabled) {
+          ctx.imageSmoothingQuality = 'high';
+          ctx.filter = 'contrast(1.1) brightness(1.05) saturate(1.1)';
+        } else {
+          ctx.filter = 'none';
+          ctx.imageSmoothingQuality = mode.sharpness === 'ultra' ? 'high' : mode.sharpness === 'high' ? 'medium' : 'low';
         }
         
-        // Vẽ frame từ video lên canvas
-        try {
-          ctx.drawImage(
-            videoElement,
-            cropX, cropY, cropWidth, cropHeight,
-            0, 0, canvasW, canvasH
-          );
-          
-          // Nếu là chế độ 8K, áp dụng thêm filter sharpen nhẹ
-          if (currentMode === 'ultrahd' && currentZoom > 2) {
-            // Unsharp mask đơn giản (chỉ áp dụng khi zoom để tiết kiệm CPU)
-            const imageData = ctx.getImageData(0, 0, canvasW, canvasH);
-            // Áp dụng sharpen nhẹ (chỉ khi cần)
-            // Bỏ qua để tránh lag, dùng CSS filter thay thế
-          }
-        } catch (e) {
-          console.warn('Render error:', e);
+        ctx.drawImage(videoElement, cropX, cropY, cropWidth, cropHeight, 0, 0, canvasW, canvasH);
+        ctx.filter = 'none';
+        
+        // Nếu bật làm nét, áp dụng thêm unsharp mask
+        if (sharpenEnabled && currentZoom > 5) {
+          applyUnsharpMask(ctx, canvasW, canvasH);
         }
         
-        // Cập nhật zoom display
         zoomValueSpan.textContent = currentZoom.toFixed(1);
-        
         requestAnimationFrame(renderLoop);
       }
       
+      // ============ UNSHARP MASK - LÀM NÉT THẦN KỲ ============
+      function applyUnsharpMask(context, width, height) {
+        const imageData = context.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        const copy = new Uint8ClampedArray(data);
+        
+        const kernel = [
+          [0, -0.5, 0],
+          [-0.5, 3, -0.5],
+          [0, -0.5, 0]
+        ];
+        
+        for (let y = 1; y < height - 1; y++) {
+          for (let x = 1; x < width - 1; x++) {
+            const idx = (y * width + x) * 4;
+            
+            for (let c = 0; c < 3; c++) {
+              let sum = 0;
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const kidx = ((y + ky) * width + (x + kx)) * 4 + c;
+                  sum += copy[kidx] * kernel[ky + 1][kx + 1];
+                }
+              }
+              data[idx + c] = Math.max(0, Math.min(255, sum));
+            }
+            data[idx + 3] = 255;
+          }
+        }
+        
+        context.putImageData(imageData, 0, 0);
+      }
+      
       // ============ TOUCH HANDLERS ============
-      function getTouchDistance(touches) {
-        if (touches.length < 2) return 0;
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-      }
-      
-      function getTouchMidpoint(touches) {
-        return {
-          x: (touches[0].clientX + touches[1].clientX) / 2,
-          y: (touches[0].clientY + touches[1].clientY) / 2
-        };
-      }
-      
       canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
         const touches = e.touches;
-        
         if (touches.length === 2) {
           isTouching = true;
           isPanning = false;
-          startTouchDistance = getTouchDistance(touches);
+          startTouchDistance = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
           startZoom = currentZoom;
         } else if (touches.length === 1 && currentZoom > 1.01) {
           isPanning = true;
@@ -544,36 +847,26 @@
         const touches = e.touches;
         
         if (touches.length === 2 && isTouching) {
-          const newDist = getTouchDistance(touches);
+          const newDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
           if (startTouchDistance > 10 && newDist > 10) {
-            const scale = newDist / startTouchDistance;
-            let newZoom = startZoom * scale;
-            newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+            let newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, startZoom * (newDist / startTouchDistance)));
             
-            const midpoint = getTouchMidpoint(touches);
+            const midX = (touches[0].clientX + touches[1].clientX) / 2;
+            const midY = (touches[0].clientY + touches[1].clientY) / 2;
             const rect = canvas.getBoundingClientRect();
-            const touchCanvasX = (midpoint.x - rect.left) / rect.width;
-            const touchCanvasY = (midpoint.y - rect.top) / rect.height;
+            const tx = (midX - rect.left) / rect.width;
+            const ty = (midY - rect.top) / rect.height;
             
             const oldCropW = videoWidth / startZoom;
             const oldCropH = videoHeight / startZoom;
             const newCropW = videoWidth / newZoom;
             const newCropH = videoHeight / newZoom;
             
-            const oldVideoX = panX * (videoWidth - oldCropW) + touchCanvasX * oldCropW;
-            const oldVideoY = panY * (videoHeight - oldCropH) + touchCanvasY * oldCropH;
+            const oldVX = panX * (videoWidth - oldCropW) + tx * oldCropW;
+            const oldVY = panY * (videoHeight - oldCropH) + ty * oldCropH;
             
-            if (videoWidth > newCropW) {
-              panX = (oldVideoX - touchCanvasX * newCropW) / (videoWidth - newCropW);
-            } else {
-              panX = 0.5;
-            }
-            if (videoHeight > newCropH) {
-              panY = (oldVideoY - touchCanvasY * newCropH) / (videoHeight - newCropH);
-            } else {
-              panY = 0.5;
-            }
-            
+            panX = videoWidth > newCropW ? (oldVX - tx * newCropW) / (videoWidth - newCropW) : 0.5;
+            panY = videoHeight > newCropH ? (oldVY - ty * newCropH) / (videoHeight - newCropH) : 0.5;
             panX = Math.max(0, Math.min(1, panX));
             panY = Math.max(0, Math.min(1, panY));
             
@@ -584,21 +877,11 @@
         } else if (touches.length === 1 && isPanning && currentZoom > 1.01) {
           const dx = touches[0].clientX - lastPanX;
           const dy = touches[0].clientY - lastPanY;
-          
           const cropW = videoWidth / currentZoom;
           const cropH = videoHeight / currentZoom;
-          const maxPanX = videoWidth - cropW;
-          const maxPanY = videoHeight - cropH;
           
-          if (maxPanX > 0) {
-            panX = startPanX - (dx / canvas.width) * (videoWidth / maxPanX);
-          }
-          if (maxPanY > 0) {
-            panY = startPanY - (dy / canvas.height) * (videoHeight / maxPanY);
-          }
-          
-          panX = Math.max(0, Math.min(1, panX));
-          panY = Math.max(0, Math.min(1, panY));
+          if (videoWidth > cropW) panX = Math.max(0, Math.min(1, startPanX - (dx / canvas.width) * (videoWidth / (videoWidth - cropW))));
+          if (videoHeight > cropH) panY = Math.max(0, Math.min(1, startPanY - (dy / canvas.height) * (videoHeight / (videoHeight - cropH))));
         }
       }, { passive: false });
       
@@ -608,41 +891,195 @@
         startZoom = currentZoom;
       });
       
-      // ============ CHUYỂN CAMERA ============
-      switchBtn.addEventListener('click', async () => {
-        if (!videoTrack) return;
-        const currentFacing = videoTrack.getSettings().facingMode;
-        const newFacing = currentFacing === 'environment' ? 'user' : 'environment';
-        currentZoom = 1.0;
-        panX = 0.5;
-        panY = 0.5;
-        await startCamera(newFacing);
+      // ============ CHỤP ẢNH ============
+      document.getElementById('captureBtn').addEventListener('click', () => {
+        // Flash effect
+        flashEffect.classList.add('flash');
+        setTimeout(() => flashEffect.classList.remove('flash'), 150);
+        
+        // Capture canvas
+        const dataURL = canvas.toDataURL('image/png');
+        addToGallery(dataURL, 'image');
+        showPreview(dataURL, 'image');
+        showToast('📸 Đã chụp ảnh!');
       });
       
-      // ============ CHẾ ĐỘ CHẤT LƯỢNG ============
-      modeSelector.addEventListener('click', (e) => {
+      // ============ QUAY VIDEO ============
+      const recordBtn = document.getElementById('recordBtn');
+      recordBtn.addEventListener('click', async () => {
+        if (!isRecording) {
+          // Bắt đầu quay
+          if (!videoStream) return;
+          
+          recordedChunks = [];
+          const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+          mediaRecorder = new MediaRecorder(videoStream, { mimeType });
+          
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) recordedChunks.push(e.data);
+          };
+          
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            addToGallery(url, 'video');
+            showPreview(url, 'video');
+            showToast('🎬 Đã quay video!');
+          };
+          
+          mediaRecorder.start();
+          isRecording = true;
+          recordBtn.classList.add('active');
+          showToast('🔴 Đang quay...');
+        } else {
+          // Dừng quay
+          mediaRecorder.stop();
+          isRecording = false;
+          recordBtn.classList.remove('active');
+        }
+      });
+      
+      // ============ LÀM NÉT THẦN KỲ ============
+      const sharpenBtn = document.getElementById('sharpenBtn');
+      sharpenBtn.addEventListener('click', () => {
+        sharpenEnabled = !sharpenEnabled;
+        if (sharpenEnabled) {
+          sharpenBtn.classList.add('active');
+          showToast('✨ Làm Nét Thần Kỳ: BẬT - Hình ảnh sẽ siêu nét!');
+        } else {
+          sharpenBtn.classList.remove('active');
+          showToast('✨ Làm Nét Thần Kỳ: TẮT');
+        }
+      });
+      
+      // ============ GALLERY ============
+      function addToGallery(data, type) {
+        galleryData.push({ data, type, id: Date.now() });
+        renderGallery();
+      }
+      
+      function renderGallery() {
+        galleryItems.innerHTML = '';
+        galleryData.forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'gallery-item';
+          div.onclick = () => showPreview(item.data, item.type);
+          
+          if (item.type === 'image') {
+            const img = document.createElement('img');
+            img.src = item.data;
+            div.appendChild(img);
+          } else {
+            const video = document.createElement('video');
+            video.src = item.data;
+            video.muted = true;
+            div.appendChild(video);
+            const badge = document.createElement('span');
+            badge.className = 'video-badge';
+            badge.textContent = '▶';
+            div.appendChild(badge);
+          }
+          
+          const deleteBtn = document.createElement('span');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = '×';
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (item.type === 'video') URL.revokeObjectURL(item.data);
+            galleryData.splice(index, 1);
+            renderGallery();
+            showToast('🗑️ Đã xóa!');
+          };
+          div.appendChild(deleteBtn);
+          
+          galleryItems.appendChild(div);
+        });
+      }
+      
+      // Toggle gallery
+      galleryToggle.addEventListener('click', () => {
+        galleryPanel.classList.toggle('collapsed');
+        galleryToggle.textContent = galleryPanel.classList.contains('collapsed') ? '▶' : '◀';
+      });
+      
+      // ============ PREVIEW MODAL ============
+      function showPreview(data, type) {
+        previewModal.classList.add('active');
+        if (type === 'image') {
+          previewContent.src = data;
+          previewContent.style.display = 'block';
+          previewVideo.style.display = 'none';
+        } else {
+          previewVideo.src = data;
+          previewVideo.style.display = 'block';
+          previewContent.style.display = 'none';
+        }
+      }
+      
+      document.getElementById('closePreviewBtn').addEventListener('click', () => {
+        previewModal.classList.remove('active');
+        previewVideo.pause();
+      });
+      
+      document.getElementById('saveToAlbumBtn').addEventListener('click', async () => {
+        const lastItem = galleryData[galleryData.length - 1];
+        if (!lastItem) return;
+        
+        try {
+          if (lastItem.type === 'image') {
+            // Lưu ảnh
+            const response = await fetch(lastItem.data);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `zoom-pro-${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+          } else {
+            // Lưu video
+            const a = document.createElement('a');
+            a.href = lastItem.data;
+            a.download = `zoom-pro-${Date.now()}.webm`;
+            a.click();
+          }
+          showToast('✅ Đã lưu vào thiết bị!');
+        } catch (err) {
+          // Fallback: mở tab mới để tải
+          window.open(lastItem.data, '_blank');
+          showToast('📥 Đang tải xuống...');
+        }
+      });
+      
+      // ============ TOAST ============
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+      }
+      
+      // ============ MODE SELECTOR ============
+      document.getElementById('modeSelector').addEventListener('click', (e) => {
         const btn = e.target.closest('.mode-btn');
         if (!btn) return;
         
-        const mode = btn.dataset.mode;
-        if (mode === currentMode) return;
-        
-        // Cập nhật UI
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        currentMode = btn.dataset.mode;
         
-        // Cập nhật chế độ
-        currentMode = mode;
-        console.log('🔄 Chuyển sang chế độ:', QUALITY_MODES[mode].name);
-        
-        // Khởi động lại camera với độ phân giải mới
-        const currentFacing = videoTrack ? videoTrack.getSettings().facingMode : 'environment';
-        startCamera(currentFacing);
+        const facing = videoTrack?.getSettings().facingMode || 'environment';
+        startCamera(facing);
+        showToast(`🎯 Chế độ: ${QUALITY_MODES[currentMode].name}`);
       });
       
+      // ============ RESIZE ============
+      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+      
       // ============ KHỞI ĐỘNG ============
-      console.log('🚀 Khởi động Camera Siêu Zoom...');
       await startCamera('environment');
+      showToast('🚀 Camera Siêu Zoom PRO MAX đã sẵn sàng!');
       
     })();
   </script>
