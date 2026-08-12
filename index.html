@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
+  <title>Camera Siêu Zoom 1x - 200x | Siêu Nét</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      touch-action: none; /* Ngăn scroll khi vuốt */
+      user-select: none;
+      -webkit-user-select: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+
+    #container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Canvas để render video với CSS transform (zoom mượt) */
+    #outputCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      /* 
+        KHÔNG dùng transform: scale() ở đây.
+        Zoom sẽ được xử lý bằng cách thay đổi kích thước canvas render từ video gốc.
+        Điều này tận dụng độ phân giải tối đa của cảm biến.
+      */
+      image-rendering: auto; /* Để trình duyệt xử lý mượt */
+      image-rendering: crisp-edges; /* Giữ nét khi phóng to, không làm mờ */
+    }
+
+    /* Lớp phủ thông tin zoom */
+    #zoomInfo {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    #zoomValue {
+      font-size: 38px;
+      font-weight: 700;
+      margin: 0 4px;
+      color: #FFD966;
+    }
+
+    /* Nút chuyển camera (trước/sau) nếu có */
+    .switch-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 26px;
+      border: 1px solid rgba(255,255,255,0.3);
+      cursor: pointer;
+      z-index: 30;
+      transition: background 0.2s;
+      pointer-events: auto;
+      touch-action: manipulation;
+    }
+    .switch-btn:active {
+      background: rgba(255,255,255,0.3);
+    }
+    .switch-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+    }
+
+    /* Hướng dẫn nhẹ */
+    #hint {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: rgba(255,255,255,0.8);
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #zoomInfo {
+        bottom: 25px;
+        padding: 10px 24px;
+        font-size: 18px;
+      }
+      #zoomValue {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="hint">📷 Vuốt màn hình để zoom 1x - 200x</div>
+  <div id="container">
+    <canvas id="outputCanvas"></canvas>
+  </div>
+  <div id="zoomInfo">🔍 <span id="zoomValue">1.0</span>x</div>
+  
+  <!-- Nút chuyển camera (nếu thiết bị hỗ trợ) -->
+  <div class="switch-btn" id="switchCameraBtn" style="display: none;">
+    <svg viewBox="0 0 24 24">
+      <path d="M20 4h-3.5l-1.5-2h-6L7.5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 14c-3.31 0-6-2.69-6-6h2c0 2.21 1.79 4 4 4s4-1.79 4-4h2c0 3.31-2.69 6-6 6z"/>
+      <path d="M12 10l-2 2h4z" fill="white"/>
+    </svg>
+  </div>
+
+  <script>
+    (async function() {
+      // ============ CẤU HÌNH TỐI ƯU ============
+      const MIN_ZOOM = 1.0;
+      const MAX_ZOOM = 200.0;
+      
+      // Lấy độ phân giải video cao nhất có thể
+      const VIDEO_CONSTRAINTS = {
+        video: {
+          facingMode: "environment", // Camera sau (chính) – thường có độ phân giải cao nhất
+          width: { ideal: 3840 },    // 4K nếu có, nếu không sẽ lấy gần nhất
+          height: { ideal: 2160 },
+          aspectRatio: { ideal: 16/9 }
+        },
+        audio: false
+      };
+
+      // ============ DOM ELEMENTS ============
+      const canvas = document.getElementById('outputCanvas');
+      const ctx = canvas.getContext('2d', {
+        alpha: false,
+        desynchronized: true,      // Giảm độ trễ render
+        willReadFrequently: false
+      });
+      const zoomValueSpan = document.getElementById('zoomValue');
+      const switchBtn = document.getElementById('switchCameraBtn');
+      const container = document.getElementById('container');
+
+      // ============ STATE ============
+      let videoStream = null;
+      let videoTrack = null;
+      let videoElement = document.createElement('video');
+      videoElement.setAttribute('playsinline', '');
+      videoElement.setAttribute('muted', '');
+      videoElement.setAttribute('autoplay', '');
+      
+      let currentZoom = 1.0;
+      let videoWidth = 1920;  // Sẽ cập nhật sau khi metadata load
+      let videoHeight = 1080;
+      
+      // Biến cho cử chỉ vuốt
+      let isTouching = false;
+      let startTouchDistance = 0;
+      let startZoom = 1.0;
+      let lastTouchX = 0;
+      let lastTouchY = 0;
+      
+      // Vị trí center crop (offset) - mặc định center
+      let panX = 0.5; // 0.5 = giữa
+      let panY = 0.5;
+      
+      // Biến để di chuyển vùng zoom khi đã zoom lớn (pan)
+      let isPanning = false;
+      let lastPanX = 0, lastPanY = 0;
+      let startPanX = 0, startPanY = 0;
+
+      // ============ KHỞI TẠO CAMERA ============
+      async function startCamera(facingMode = "environment") {
+        // Dừng stream cũ nếu có
+        if (videoStream) {
+          videoStream.getTracks().forEach(track => track.stop());
+        }
+        
+        try {
+          // Yêu cầu quyền và lấy stream với cấu hình tối ưu
+          const constraints = {
+            video: {
+              facingMode: facingMode,
+              width: { ideal: 3840 },
+              height: { ideal: 2160 },
+              aspectRatio: { ideal: 16/9 }
+            },
+            audio: false
+          };
+          
+          videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+          videoTrack = videoStream.getVideoTracks()[0];
+          
+          // Kiểm tra capabilities để xem có hỗ trợ zoom quang học không (không bắt buộc)
+          if (videoTrack.getCapabilities) {
+            const capabilities = videoTrack.getCapabilities();
+            console.log('Camera capabilities:', capabilities);
+            // Nếu có zoom quang học, ta vẫn dùng zoom số để đảm bảo 1x-200x mượt
+            // nhưng có thể tận dụng zoom quang trước nếu muốn. Ở đây ta ưu tiên zoom số từ canvas để đồng nhất.
+          }
+          
+          videoElement.srcObject = videoStream;
+          await videoElement.play();
+          
+          // Đợi metadata để lấy kích thước thực của video
+          await new Promise((resolve) => {
+            videoElement.onloadedmetadata = () => {
+              videoWidth = videoElement.videoWidth;
+              videoHeight = videoElement.videoHeight;
+              console.log(`Độ phân giải video gốc: ${videoWidth}x${videoHeight}`);
+              resolve();
+            };
+          });
+          
+          // Cập nhật kích thước canvas cho khớp container (giữ tỉ lệ)
+          resizeCanvas();
+          
+          // Kiểm tra xem có nhiều camera không để hiện nút chuyển
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          if (videoDevices.length > 1) {
+            switchBtn.style.display = 'flex';
+          } else {
+            switchBtn.style.display = 'none';
+          }
+          
+          // Bắt đầu vòng lặp render
+          requestAnimationFrame(renderLoop);
+          
+        } catch (err) {
+          console.error('Lỗi truy cập camera:', err);
+          alert('Không thể truy cập camera. Vui lòng kiểm tra quyền và thử lại.');
+        }
+      }
+
+      // ============ RESIZE CANVAS ============
+      function resizeCanvas() {
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        // Giữ canvas luôn full màn hình, object-fit contain sẽ được xử lý trong render
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
+      }
+
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+      });
+
+      // ============ RENDER LOOP SIÊU NÉT ============
+      function renderLoop() {
+        if (!videoStream || videoElement.readyState < 2) {
+          requestAnimationFrame(renderLoop);
+          return;
+        }
+
+        const canvasW = canvas.width;
+        const canvasH = canvas.height;
+        
+        if (canvasW === 0 || canvasH === 0) {
+          requestAnimationFrame(renderLoop);
+          return;
+        }
+
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        
+        // Tính toán vùng crop từ video gốc dựa trên zoom và pan
+        // Tỉ lệ khung hình của canvas
+        const canvasRatio = canvasW / canvasH;
+        const videoRatio = videoWidth / videoHeight;
+        
+        // Kích thước vùng ảnh video để fit vào canvas (contain)
+        let drawWidth, drawHeight;
+        if (canvasRatio > videoRatio) {
+          // Canvas rộng hơn -> fit theo chiều cao
+          drawHeight = canvasH;
+          drawWidth = drawHeight * videoRatio;
+        } else {
+          // Canvas cao hơn -> fit theo chiều rộng
+          drawWidth = canvasW;
+          drawHeight = drawWidth / videoRatio;
+        }
+        
+        // Kích thước vùng crop trong không gian video (tính bằng pixel video)
+        const cropWidth = videoWidth / currentZoom;
+        const cropHeight = videoHeight / currentZoom;
+        
+        // Giới hạn pan không vượt ra ngoài biên video
+        // panX, panY là tỉ lệ 0..1 (0 = trái/trên, 1 = phải/dưới)
+        const maxPanX = videoWidth - cropWidth;
+        const maxPanY = videoHeight - cropHeight;
+        
+        let cropX = panX * maxPanX;
+        let cropY = panY * maxPanY;
+        
+        // Clamp để không bị tràn
+        cropX = Math.max(0, Math.min(cropX, maxPanX));
+        cropY = Math.max(0, Math.min(cropY, maxPanY));
+        
+        // Vẽ vùng crop từ video lên toàn bộ canvas (scale to fit)
+        // Sử dụng imageSmoothingEnabled = true để nội suy mượt, nhưng với video chất lượng cao sẽ cho ra nét nhất.
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Vẽ với kích thước đầy đủ canvas
+        ctx.drawImage(
+          videoElement,
+          cropX, cropY, cropWidth, cropHeight,   // Source rectangle
+          0, 0, canvasW, canvasH                 // Destination rectangle
+        );
+        
+        // Cập nhật hiển thị zoom
+        zoomValueSpan.textContent = currentZoom.toFixed(1);
+        
+        requestAnimationFrame(renderLoop);
+      }
+
+      // ============ XỬ LÝ CỬ CHỈ VUỐT (PINCH ZOOM + PAN) ============
+      function getTouchDistance(touches) {
+        if (touches.length < 2) return 0;
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function getTouchMidpoint(touches) {
+        if (touches.length < 2) return { x: 0, y: 0 };
+        return {
+          x: (touches[0].clientX + touches[1].clientX) / 2,
+          y: (touches[0].clientY + touches[1].clientY) / 2
+        };
+      }
+
+      function handleTouchStart(e) {
+        e.preventDefault();
+        const touches = e.touches;
+        
+        if (touches.length === 2) {
+          // Bắt đầu pinch zoom
+          isTouching = true;
+          isPanning = false;
+          startTouchDistance = getTouchDistance(touches);
+          startZoom = currentZoom;
+          
+          const midpoint = getTouchMidpoint(touches);
+          lastTouchX = midpoint.x;
+          lastTouchY = midpoint.y;
+        } else if (touches.length === 1 && currentZoom > 1.01) {
+          // Một ngón tay khi đã zoom: bắt đầu pan
+          isPanning = true;
+          isTouching = false;
+          lastPanX = touches[0].clientX;
+          lastPanY = touches[0].clientY;
+          startPanX = panX;
+          startPanY = panY;
+        }
+      }
+
+      function handleTouchMove(e) {
+        e.preventDefault();
+        const touches = e.touches;
+        
+        if (touches.length === 2 && isTouching) {
+          // Pinch zoom
+          const newDist = getTouchDistance(touches);
+          if (startTouchDistance > 10 && newDist > 10) {
+            const scale = newDist / startTouchDistance;
+            let newZoom = startZoom * scale;
+            newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+            
+            // Điều chỉnh pan để zoom vào điểm giữa 2 ngón tay (giữ nguyên vị trí tương đối)
+            const midpoint = getTouchMidpoint(touches);
+            const rect = canvas.getBoundingClientRect();
+            
+            // Tỉ lệ vị trí chạm trong canvas (0..1)
+            const touchCanvasX = (midpoint.x - rect.left) / rect.width;
+            const touchCanvasY = (midpoint.y - rect.top) / rect.height;
+            
+            // Tính toán cropWidth/Height cũ và mới
+            const oldCropW = videoWidth / startZoom;
+            const oldCropH = videoHeight / startZoom;
+            const newCropW = videoWidth / newZoom;
+            const newCropH = videoHeight / newZoom;
+            
+            // Vị trí tâm điểm chạm trong không gian video cũ
+            const oldVideoX = panX * (videoWidth - oldCropW) + touchCanvasX * oldCropW;
+            const oldVideoY = panY * (videoHeight - oldCropH) + touchCanvasY * oldCropH;
+            
+            // Cập nhật pan mới để giữ điểm đó cố định
+            if (videoWidth > newCropW) {
+              panX = (oldVideoX - touchCanvasX * newCropW) / (videoWidth - newCropW);
+            } else {
+              panX = 0.5;
+            }
+            if (videoHeight > newCropH) {
+              panY = (oldVideoY - touchCanvasY * newCropH) / (videoHeight - newCropH);
+            } else {
+              panY = 0.5;
+            }
+            
+            panX = Math.max(0, Math.min(1, panX));
+            panY = Math.max(0, Math.min(1, panY));
+            
+            currentZoom = newZoom;
+            startZoom = currentZoom;
+            startTouchDistance = newDist;
+          }
+        } else if (touches.length === 1 && isPanning && currentZoom > 1.01) {
+          // Pan một ngón
+          const dx = touches[0].clientX - lastPanX;
+          const dy = touches[0].clientY - lastPanY;
+          
+          const cropW = videoWidth / currentZoom;
+          const cropH = videoHeight / currentZoom;
+          const maxPanX = videoWidth - cropW;
+          const maxPanY = videoHeight - cropH;
+          
+          if (maxPanX > 0) {
+            const deltaRatioX = dx / canvas.width;
+            panX = startPanX - deltaRatioX * (videoWidth / maxPanX);
+          }
+          if (maxPanY > 0) {
+            const deltaRatioY = dy / canvas.height;
+            panY = startPanY - deltaRatioY * (videoHeight / maxPanY);
+          }
+          
+          panX = Math.max(0, Math.min(1, panX));
+          panY = Math.max(0, Math.min(1, panY));
+        }
+      }
+
+      function handleTouchEnd(e) {
+        e.preventDefault();
+        isTouching = false;
+        isPanning = false;
+        // Reset lại startZoom để lần pinch tiếp theo hoạt động đúng
+        startZoom = currentZoom;
+      }
+
+      // ============ GÁN SỰ KIỆN CẢM ỨNG ============
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+      canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+      canvas.addEventListener('touchend', handleTouchEnd);
+      canvas.addEventListener('touchcancel', handleTouchEnd);
+
+      // Ngăn chặn scroll trên toàn body
+      document.body.addEventListener('touchstart', (e) => {
+        if (e.target === canvas || canvas.contains(e.target)) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      document.body.addEventListener('touchmove', (e) => {
+        if (e.target === canvas || canvas.contains(e.target)) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      // ============ CHUYỂN CAMERA ============
+      switchBtn.addEventListener('click', async () => {
+        if (!videoTrack) return;
+        const currentFacing = videoTrack.getSettings().facingMode;
+        const newFacing = currentFacing === 'environment' ? 'user' : 'environment';
+        await startCamera(newFacing);
+        // Reset zoom và pan
+        currentZoom = 1.0;
+        panX = 0.5;
+        panY = 0.5;
+      });
+
+      // ============ BẮT ĐẦU ============
+      await startCamera('environment');
+      
+      // Xử lý khi màn hình xoay / resize
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+      });
+
+      // Tối ưu: giảm thiểu lag bằng cách dùng requestAnimationFrame đã có
+      console.log('✅ Camera siêu zoom 1x-200x đã sẵn sàng. Vuốt 2 ngón để zoom, 1 ngón để di chuyển.');
+    })();
+  </script>
+</body>
+</html>
